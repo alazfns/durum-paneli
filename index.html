@@ -7,13 +7,14 @@
 <style>
   :root{
     --ink:#1E1E1C; --bone:#F5F4EF; --paper:#FFFFFF;
-    --dim:#6E6A5F; --line:rgba(30,30,28,.13);
+    --dim:#6E6A5F; --line:rgba(30,30,28,.13); --track:rgba(30,30,28,.07);
     --ok:#2E7A5C; --warn:#C4602E; --err:#B23A3A;
     --sans:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
     --mono:'SFMono-Regular',Consolas,monospace;
   }
   @media (prefers-color-scheme: dark){
-    :root{ --ink:#E6E3DA; --bone:#171715; --paper:#1E1E1C; --dim:#9E9A90; --line:rgba(230,227,218,.14); }
+    :root{ --ink:#E6E3DA; --bone:#171715; --paper:#1E1E1C; --dim:#9E9A90;
+      --line:rgba(230,227,218,.14); --track:rgba(230,227,218,.08); }
   }
   *{box-sizing:border-box;}
   body{
@@ -21,48 +22,85 @@
     padding:24px 18px 60px; -webkit-font-smoothing:antialiased;
   }
   .wrap{max-width:760px; margin-inline:auto;}
-  header{margin-bottom:28px;}
+  header{margin-bottom:28px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;}
   .eyebrow{
     font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
     color:var(--dim); margin-bottom:8px;
   }
   h1{font-size:clamp(22px,4vw,30px); margin:0 0 6px; letter-spacing:-.01em;}
   .sub{font-size:13.5px; color:var(--dim); margin:0;}
+  .badge{
+    display:flex; align-items:center; gap:7px; font-size:12px; color:var(--dim);
+    border:1px solid var(--line); padding:7px 12px; white-space:nowrap;
+  }
+  .dot{display:inline-block; width:7px; height:7px; border-radius:50%; flex:none; background:var(--dim);}
+  .dot.ok{background:var(--ok);} .dot.warn{background:var(--warn);} .dot.err{background:var(--err);}
+
   .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line);
-    border:1px solid var(--line); margin-bottom:28px;}
+    border:1px solid var(--line); margin-bottom:32px;}
   @media (max-width:480px){ .cards{grid-template-columns:1fr;} }
   .card{background:var(--paper); padding:18px 18px 16px;}
   .card .n{font-family:var(--mono); font-size:32px; font-variant-numeric:tabular-nums; line-height:1;}
   .card .l{font-size:12px; color:var(--dim); margin-top:8px;}
+  .card .p{font-size:11px; color:var(--dim); margin-top:2px;}
   .card.onemli .n{color:var(--warn);}
   .card.hata .n{color:var(--err);}
+
+  .section-h{
+    font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--dim); margin:0 0 12px;
+  }
+  .chart{display:grid; gap:6px; margin-bottom:14px;}
+  .chart-row{display:grid; grid-template-columns:64px 1fr 26px; align-items:center; gap:10px;}
+  .chart-row .d{font-family:var(--mono); font-size:11px; color:var(--dim);}
+  .chart-row .t{font-family:var(--mono); font-size:11px; color:var(--dim); text-align:right; font-variant-numeric:tabular-nums;}
+  .track{background:var(--track); height:14px; position:relative; overflow:hidden;}
+  .fill{height:100%; display:flex;}
+  .seg-onemli{background:var(--warn);}
+  .seg-gurultu{background:var(--dim); opacity:.45;}
+  .seg-hata{background:var(--err);}
+  .legend{display:flex; gap:16px; font-size:11.5px; color:var(--dim); margin-bottom:28px; flex-wrap:wrap;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{width:9px; height:9px; display:inline-block; flex:none;}
+  .legend .li-onemli{background:var(--warn);}
+  .legend .li-gurultu{background:var(--dim); opacity:.45;}
+  .legend .li-hata{background:var(--err);}
+
+  .ozet{font-size:13px; color:var(--dim); margin:0 0 28px; line-height:1.6;}
+  .ozet b{color:var(--ink); font-weight:600;}
+
   table{width:100%; border-collapse:collapse; font-size:13.5px;}
   th,td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--line);}
   th{font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); font-weight:500;}
   td.num{font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:right;}
   .empty{padding:32px 18px; text-align:center; color:var(--dim); font-size:13.5px; border:1px dashed var(--line);}
   footer{margin-top:32px; font-size:11.5px; color:var(--dim); display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;}
-  .dot{display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--ok); margin-right:6px; vertical-align:middle;}
 </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <div class="eyebrow" id="urunAdi">Durum Paneli</div>
-      <h1>Otomasyon durumu</h1>
-      <p class="sub" id="altBaslik">Yükleniyor…</p>
+      <div>
+        <div class="eyebrow" id="urunAdi">Durum Paneli</div>
+        <h1>Otomasyon durumu</h1>
+        <p class="sub" id="altBaslik">Yükleniyor…</p>
+      </div>
+      <div class="badge" id="durumRozeti"><span class="dot" id="durumNokta"></span><span id="durumMetin">bağlanıyor…</span></div>
     </header>
 
     <div class="cards">
       <div class="card"><div class="n" id="cToplam">–</div><div class="l">Bugün işlenen</div></div>
       <div class="card onemli"><div class="n" id="cOnemli">–</div><div class="l">Önemli işaretlenen</div></div>
-      <div class="card hata"><div class="n" id="cHata">–</div><div class="l">Sınıflandırma hatası</div></div>
+      <div class="card hata"><div class="n" id="cHata">–</div><div class="l">Sınıflandırma hatası</div><div class="p" id="cHataYuzde"></div></div>
     </div>
+
+    <div id="grafikAlani"></div>
+    <p class="ozet" id="ozetMetni"></p>
 
     <div id="tabloAlani"></div>
 
     <footer>
-      <span><span class="dot"></span><span id="sonDurum">bağlanıyor…</span></span>
+      <span id="sonCalisma">—</span>
       <span>alazfns · otomasyon durum paneli</span>
     </footer>
   </div>
@@ -76,14 +114,28 @@
       return d.toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
     } catch (e) { return s; }
   }
+  function gunEtiketi(tarih) {
+    try {
+      var d = new Date(tarih + "T00:00:00");
+      return d.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" });
+    } catch (e) { return tarih; }
+  }
 
   fetch("data.json?_=" + Date.now())
     .then(function (r) { return r.json(); })
     .then(function (data) {
       var gunler = data.gunluk || [];
       document.getElementById("urunAdi").textContent = data.urun || "Durum Paneli";
-      document.getElementById("sonDurum").textContent =
-        "son çalışma: " + fmtTarih(data.son_calisma);
+      document.getElementById("sonCalisma").textContent = "son çalışma: " + fmtTarih(data.son_calisma);
+
+      // Sistem durumu: son calismadan bu yana gecen sure - 09:00'da gunluk
+      // calismasi bekleniyor, 30 saatten fazla gecikme varsa uyar.
+      var nokta = document.getElementById("durumNokta");
+      var metin = document.getElementById("durumMetin");
+      var saatFarki = data.son_calisma ? (Date.now() - new Date(data.son_calisma).getTime()) / 36e5 : Infinity;
+      var durum = saatFarki < 30 ? "ok" : saatFarki < 48 ? "warn" : "err";
+      nokta.className = "dot " + durum;
+      metin.textContent = durum === "ok" ? "çalışıyor" : durum === "warn" ? "gecikme var" : "durmuş olabilir";
 
       if (!gunler.length) {
         document.getElementById("altBaslik").textContent = "Henüz veri yok — ilk çalışma bekleniyor.";
@@ -98,6 +150,45 @@
       document.getElementById("cToplam").textContent = son.toplam;
       document.getElementById("cOnemli").textContent = son.onemli;
       document.getElementById("cHata").textContent = son.hata || 0;
+      var sonYuzde = son.toplam ? Math.round((son.hata || 0) / son.toplam * 100) : 0;
+      document.getElementById("cHataYuzde").textContent = "işlenenin %" + sonYuzde + "'i";
+
+      // Son 14 gun - hacme gore olceklenmis yatay yigin grafik.
+      var pencere = gunler.slice().reverse().slice(0, 14).reverse();
+      var maxToplam = Math.max.apply(null, pencere.map(function (g) { return g.toplam || 0; })) || 1;
+
+      var chartRows = pencere.map(function (g) {
+        var oran = (g.toplam || 0) / maxToplam * 100;
+        var t = g.toplam || 1;
+        var wOnemli = (g.onemli || 0) / t * 100;
+        var wGurultu = (g.gurultu || 0) / t * 100;
+        var wHata = (g.hata || 0) / t * 100;
+        return '<div class="chart-row">' +
+          '<span class="d">' + gunEtiketi(g.tarih) + '</span>' +
+          '<span class="track"><span class="fill" style="width:' + oran.toFixed(1) + '%">' +
+            '<span class="seg-onemli" style="width:' + wOnemli.toFixed(1) + '%"></span>' +
+            '<span class="seg-gurultu" style="width:' + wGurultu.toFixed(1) + '%"></span>' +
+            '<span class="seg-hata" style="width:' + wHata.toFixed(1) + '%"></span>' +
+          '</span></span>' +
+          '<span class="t">' + g.toplam + '</span>' +
+        '</div>';
+      }).join("");
+
+      document.getElementById("grafikAlani").innerHTML =
+        '<p class="section-h">Son ' + pencere.length + ' gün</p>' +
+        '<div class="chart">' + chartRows + '</div>' +
+        '<div class="legend">' +
+          '<span><i class="li-onemli"></i>Önemli</span>' +
+          '<span><i class="li-gurultu"></i>Gürültü</span>' +
+          '<span><i class="li-hata"></i>Hata</span>' +
+        '</div>';
+
+      var toplamSum = pencere.reduce(function (a, g) { return a + (g.toplam || 0); }, 0);
+      var hataSum = pencere.reduce(function (a, g) { return a + (g.hata || 0); }, 0);
+      var ortHataYuzde = toplamSum ? (hataSum / toplamSum * 100).toFixed(1) : "0";
+      document.getElementById("ozetMetni").innerHTML =
+        "Son " + pencere.length + " günde <b>" + toplamSum + " mail</b> işlendi, " +
+        "ortalama sınıflandırma hata oranı <b>%" + ortHataYuzde + "</b>.";
 
       var rows = gunler.slice().reverse().slice(0, 14).map(function (g) {
         return "<tr><td>" + g.tarih + "</td>" +
@@ -108,12 +199,14 @@
       }).join("");
 
       document.getElementById("tabloAlani").innerHTML =
+        '<p class="section-h">Günlük detay</p>' +
         "<table><thead><tr><th>Tarih</th><th>Toplam</th><th>Önemli</th><th>Gürültü</th><th>Hata</th></tr></thead>" +
         "<tbody>" + rows + "</tbody></table>";
     })
     .catch(function () {
       document.getElementById("altBaslik").textContent = "Veri okunamadı.";
-      document.getElementById("sonDurum").textContent = "bağlantı hatası";
+      document.getElementById("durumMetin").textContent = "bağlantı hatası";
+      document.getElementById("durumNokta").className = "dot err";
     });
 })();
 </script>
