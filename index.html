@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Durum Paneli</title>
+<style>
+  :root{
+    --ink:#1E1E1C; --bone:#F5F4EF; --paper:#FFFFFF;
+    --dim:#6E6A5F; --line:rgba(30,30,28,.13);
+    --ok:#2E7A5C; --warn:#C4602E; --err:#B23A3A;
+    --sans:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'SFMono-Regular',Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --ink:#E6E3DA; --bone:#171715; --paper:#1E1E1C; --dim:#9E9A90; --line:rgba(230,227,218,.14); }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bone); color:var(--ink); font-family:var(--sans);
+    padding:24px 18px 60px; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px; margin-inline:auto;}
+  header{margin-bottom:28px;}
+  .eyebrow{
+    font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--dim); margin-bottom:8px;
+  }
+  h1{font-size:clamp(22px,4vw,30px); margin:0 0 6px; letter-spacing:-.01em;}
+  .sub{font-size:13.5px; color:var(--dim); margin:0;}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line);
+    border:1px solid var(--line); margin-bottom:28px;}
+  @media (max-width:480px){ .cards{grid-template-columns:1fr;} }
+  .card{background:var(--paper); padding:18px 18px 16px;}
+  .card .n{font-family:var(--mono); font-size:32px; font-variant-numeric:tabular-nums; line-height:1;}
+  .card .l{font-size:12px; color:var(--dim); margin-top:8px;}
+  .card.onemli .n{color:var(--warn);}
+  .card.hata .n{color:var(--err);}
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th,td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--line);}
+  th{font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); font-weight:500;}
+  td.num{font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:right;}
+  .empty{padding:32px 18px; text-align:center; color:var(--dim); font-size:13.5px; border:1px dashed var(--line);}
+  footer{margin-top:32px; font-size:11.5px; color:var(--dim); display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+  .dot{display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--ok); margin-right:6px; vertical-align:middle;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow" id="urunAdi">Durum Paneli</div>
+      <h1>Otomasyon durumu</h1>
+      <p class="sub" id="altBaslik">Yükleniyor…</p>
+    </header>
+
+    <div class="cards">
+      <div class="card"><div class="n" id="cToplam">–</div><div class="l">Bugün işlenen</div></div>
+      <div class="card onemli"><div class="n" id="cOnemli">–</div><div class="l">Önemli işaretlenen</div></div>
+      <div class="card hata"><div class="n" id="cHata">–</div><div class="l">Sınıflandırma hatası</div></div>
+    </div>
+
+    <div id="tabloAlani"></div>
+
+    <footer>
+      <span><span class="dot"></span><span id="sonDurum">bağlanıyor…</span></span>
+      <span>alazfns · otomasyon durum paneli</span>
+    </footer>
+  </div>
+
+<script>
+(function () {
+  function fmtTarih(s) {
+    if (!s) return "—";
+    try {
+      var d = new Date(s);
+      return d.toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    } catch (e) { return s; }
+  }
+
+  fetch("data.json?_=" + Date.now())
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var gunler = data.gunluk || [];
+      document.getElementById("urunAdi").textContent = data.urun || "Durum Paneli";
+      document.getElementById("sonDurum").textContent =
+        "son çalışma: " + fmtTarih(data.son_calisma);
+
+      if (!gunler.length) {
+        document.getElementById("altBaslik").textContent = "Henüz veri yok — ilk çalışma bekleniyor.";
+        document.getElementById("tabloAlani").innerHTML =
+          '<div class="empty">Sistem henüz ilk kez çalışmadı. Yarın sabah burada rakamlar görünecek.</div>';
+        return;
+      }
+
+      var son = gunler[gunler.length - 1];
+      document.getElementById("altBaslik").textContent =
+        "Her gün otomatik çalışan sınıflandırma sisteminin özet rakamları.";
+      document.getElementById("cToplam").textContent = son.toplam;
+      document.getElementById("cOnemli").textContent = son.onemli;
+      document.getElementById("cHata").textContent = son.hata || 0;
+
+      var rows = gunler.slice().reverse().slice(0, 14).map(function (g) {
+        return "<tr><td>" + g.tarih + "</td>" +
+          '<td class="num">' + g.toplam + "</td>" +
+          '<td class="num">' + g.onemli + "</td>" +
+          '<td class="num">' + g.gurultu + "</td>" +
+          '<td class="num">' + (g.hata || 0) + "</td></tr>";
+      }).join("");
+
+      document.getElementById("tabloAlani").innerHTML =
+        "<table><thead><tr><th>Tarih</th><th>Toplam</th><th>Önemli</th><th>Gürültü</th><th>Hata</th></tr></thead>" +
+        "<tbody>" + rows + "</tbody></table>";
+    })
+    .catch(function () {
+      document.getElementById("altBaslik").textContent = "Veri okunamadı.";
+      document.getElementById("sonDurum").textContent = "bağlantı hatası";
+    });
+})();
+</script>
+</body>
+</html>
