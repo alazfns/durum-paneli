@@ -45,6 +45,8 @@
   .card .p{font-size:11px; color:var(--dim); margin-top:2px;}
   .card.onemli .n{color:var(--warn);}
   .card.hata .n{color:var(--err);}
+  .card.basarisiz .n{color:var(--err);}
+  .fail-note{font-size:11px; color:var(--err); margin-top:6px; line-height:1.4;}
 
   .section-h{
     font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
@@ -59,6 +61,12 @@
   .seg-onemli{background:var(--warn);}
   .seg-gurultu{background:var(--dim); opacity:.45;}
   .seg-hata{background:var(--err);}
+  .chart-row.basarisiz .track{
+    background:repeating-linear-gradient(45deg, var(--err) 0 4px, transparent 4px 9px);
+    opacity:.5;
+  }
+  .chart-row.basarisiz .t{color:var(--err);}
+  tr.basarisiz td{color:var(--err);}
   .legend{display:flex; gap:16px; font-size:11.5px; color:var(--dim); margin-bottom:28px; flex-wrap:wrap;}
   .legend span{display:inline-flex; align-items:center; gap:6px;}
   .legend i{width:9px; height:9px; display:inline-block; flex:none;}
@@ -133,9 +141,16 @@
       var nokta = document.getElementById("durumNokta");
       var metin = document.getElementById("durumMetin");
       var saatFarki = data.son_calisma ? (Date.now() - new Date(data.son_calisma).getTime()) / 36e5 : Infinity;
-      var durum = saatFarki < 30 ? "ok" : saatFarki < 48 ? "warn" : "err";
+      var sonGun = gunler.length ? gunler[gunler.length - 1] : null;
+      var durum;
+      if (sonGun && sonGun.basarili === false) {
+        durum = "err";
+        metin.textContent = "son çalışma başarısız";
+      } else {
+        durum = saatFarki < 30 ? "ok" : saatFarki < 48 ? "warn" : "err";
+        metin.textContent = durum === "ok" ? "çalışıyor" : durum === "warn" ? "gecikme var" : "durmuş olabilir";
+      }
       nokta.className = "dot " + durum;
-      metin.textContent = durum === "ok" ? "çalışıyor" : durum === "warn" ? "gecikme var" : "durmuş olabilir";
 
       if (!gunler.length) {
         document.getElementById("altBaslik").textContent = "Henüz veri yok — ilk çalışma bekleniyor.";
@@ -145,19 +160,44 @@
       }
 
       var son = gunler[gunler.length - 1];
+      var sonBasarisiz = son.basarili === false;
+
       document.getElementById("altBaslik").textContent =
         "Her gün otomatik çalışan sınıflandırma sisteminin özet rakamları.";
-      document.getElementById("cToplam").textContent = son.toplam;
-      document.getElementById("cOnemli").textContent = son.onemli;
-      document.getElementById("cHata").textContent = son.hata || 0;
-      var sonYuzde = son.toplam ? Math.round((son.hata || 0) / son.toplam * 100) : 0;
-      document.getElementById("cHataYuzde").textContent = "işlenenin %" + sonYuzde + "'i";
+
+      if (sonBasarisiz) {
+        // Eskiden basarisiz bir gun panelde hic gorunmuyordu (sessizce atlaniyordu).
+        // Artik acikca "—" ve kirmizi bir not olarak isaretleniyor.
+        document.getElementById("cToplam").textContent = "—";
+        document.getElementById("cOnemli").textContent = "—";
+        document.getElementById("cHata").textContent = "—";
+        document.querySelectorAll(".cards .card").forEach(function (c) { c.classList.add("basarisiz"); });
+        document.getElementById("cHataYuzde").innerHTML =
+          '<span class="fail-note">Bugünkü çalışma başarısız oldu' +
+          (son.hata_mesaji ? " — " + son.hata_mesaji.slice(0, 120) : "") + "</span>";
+      } else {
+        document.getElementById("cToplam").textContent = son.toplam;
+        document.getElementById("cOnemli").textContent = son.onemli;
+        document.getElementById("cHata").textContent = son.hata || 0;
+        var sonYuzde = son.toplam ? Math.round((son.hata || 0) / son.toplam * 100) : 0;
+        document.getElementById("cHataYuzde").textContent = "işlenenin %" + sonYuzde + "'i";
+      }
 
       // Son 14 gun - hacme gore olceklenmis yatay yigin grafik.
       var pencere = gunler.slice().reverse().slice(0, 14).reverse();
       var maxToplam = Math.max.apply(null, pencere.map(function (g) { return g.toplam || 0; })) || 1;
 
       var chartRows = pencere.map(function (g) {
+        if (g.basarili === false) {
+          // Eskiden basarisiz bir gun bu grafikte sifir genislikte bir cubuk
+          // olarak (yani hicbir sey olarak) goruluyordu - bos gunle ayirt
+          // edilemiyordu. Simdi tam genislik, taranmis kirmizi bir cubuk.
+          return '<div class="chart-row basarisiz">' +
+            '<span class="d">' + gunEtiketi(g.tarih) + '</span>' +
+            '<span class="track"><span class="fill" style="width:100%"></span></span>' +
+            '<span class="t">✕</span>' +
+          '</div>';
+        }
         var oran = (g.toplam || 0) / maxToplam * 100;
         var t = g.toplam || 1;
         var wOnemli = (g.onemli || 0) / t * 100;
@@ -181,16 +221,26 @@
           '<span><i class="li-onemli"></i>Önemli</span>' +
           '<span><i class="li-gurultu"></i>Gürültü</span>' +
           '<span><i class="li-hata"></i>Hata</span>' +
+          '<span><i style="background:var(--err);opacity:.5;"></i>Çalışma başarısız</span>' +
         '</div>';
 
-      var toplamSum = pencere.reduce(function (a, g) { return a + (g.toplam || 0); }, 0);
-      var hataSum = pencere.reduce(function (a, g) { return a + (g.hata || 0); }, 0);
+      var basariliGunler = pencere.filter(function (g) { return g.basarili !== false; });
+      var toplamSum = basariliGunler.reduce(function (a, g) { return a + (g.toplam || 0); }, 0);
+      var hataSum = basariliGunler.reduce(function (a, g) { return a + (g.hata || 0); }, 0);
       var ortHataYuzde = toplamSum ? (hataSum / toplamSum * 100).toFixed(1) : "0";
+      var basarisizSayisi = pencere.length - basariliGunler.length;
       document.getElementById("ozetMetni").innerHTML =
         "Son " + pencere.length + " günde <b>" + toplamSum + " mail</b> işlendi, " +
-        "ortalama sınıflandırma hata oranı <b>%" + ortHataYuzde + "</b>.";
+        "ortalama sınıflandırma hata oranı <b>%" + ortHataYuzde + "</b>" +
+        (basarisizSayisi ? ', bu sürede <b style="color:var(--err)">' + basarisizSayisi +
+          " gün çalışma tamamen başarısız oldu</b>" : "") + ".";
 
       var rows = gunler.slice().reverse().slice(0, 14).map(function (g) {
+        if (g.basarili === false) {
+          return '<tr class="basarisiz"><td>' + g.tarih + '</td>' +
+            '<td colspan="4">Çalışma başarısız' +
+            (g.hata_mesaji ? " — " + g.hata_mesaji.slice(0, 90) : "") + "</td></tr>";
+        }
         return "<tr><td>" + g.tarih + "</td>" +
           '<td class="num">' + g.toplam + "</td>" +
           '<td class="num">' + g.onemli + "</td>" +
