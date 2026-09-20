@@ -1,6 +1,6 @@
 {
   "urun": "Gmail Triage",
-  "son_calisma": "2026-09-19T06:01:30.086726+00:00",
+  "son_calisma": "2026-09-20T06:02:09.745544+00:00",
   "gunluk": [
     {
       "tarih": "2026-09-16",
@@ -31,6 +31,14 @@
       "toplam": 10,
       "onemli": 4,
       "gurultu": 6,
+      "hata": 0
+    },
+    {
+      "tarih": "2026-09-20",
+      "basarili": true,
+      "toplam": 10,
+      "onemli": 2,
+      "gurultu": 8,
       "hata": 0
     }
   ]
